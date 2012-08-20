@@ -1,0 +1,85 @@
+extends layout
+
+block append scripts
+	:coffeescript
+		# Init the socket
+		socket = io.connect()
+		
+		socket.on 'connect', ()->
+			console.log 'Connection established'
+			return
+
+		# Canvas
+		$ ->
+			$canvas = $ '#can'
+			canvas = $canvas[0]
+			ctx = canvas.getContext '2d'
+
+			paths = []
+			remotes = []
+
+			mousePos = ( canvas, evt )->
+				rect = canvas.getBoundingClientRect()
+				root = document.documentElement
+
+				mouseX = evt.clientX-rect.left-root.scrollTop
+				mouseY = evt.clientY-rect.top-root.scrollLeft
+
+				return x: mouseX, y: mouseY
+
+
+			socket.on 'remote', ( data )->
+				console.log 'Remote data'
+				remotes.push data
+				draw()
+				return
+
+			draw = ->
+				# reset canvas
+				ctx.clearRect 0, 0, canvas.width, canvas.height
+
+				# Local properties
+				ctx.lineJoin = 'round'
+				ctx.strokeStyle = 'black'
+				ctx.lineWidth = 3
+				# Draw local changes
+				$.each paths, ->
+					ctx.beginPath()
+					ctx.moveTo @[0].x, @[0].y
+					$.each @, ->
+						ctx.lineTo @.x, @.y
+					#ctx.closePath()
+					ctx.stroke()
+
+				# remote properties
+				ctx.lineJoin = 'bevel'
+				ctx.strokeStyle = 'red'
+				ctx.lineWidth = 1
+				# remote draw
+				$.each remotes, ->
+					ctx.beginPath()
+					ctx.moveTo @[0].x, @[0].y
+					$.each @, ->
+						ctx.lineTo @.x, @.y
+					#ctx.closePath()
+					ctx.stroke()
+				return
+
+			$canvas.on 'mouseup', (evt)->
+				socket.emit 'data', paths[ paths.length-1 ]
+				$canvas.off 'mousemove'
+			$canvas.on 'mousedown', (evt)->
+				paths.push []
+				mousemove evt
+				$canvas.on 'mousemove', mousemove
+
+			mousemove = (evt)->
+				pos = mousePos canvas, evt
+				paths[ paths.length-1 ].push pos
+				draw()
+				return
+
+block content
+	h1= title
+	p Welcome to #{title}
+	canvas#can(width="600", height="400")
