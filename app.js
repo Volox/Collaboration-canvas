@@ -31,8 +31,6 @@ app.get('/', routes.index);
 
 
 
-
-
 var server = http.createServer(app);
 var io = require('socket.io').listen(server);
 io.set( 'log level', 0 );
